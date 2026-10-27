@@ -1,5 +1,6 @@
 # LifeStealCore
 
+[![Architecture diagram of xenos-core/lifestealcore](https://gitdiagram.com/xenos-core/lifestealcore/diagram.png)](https://gitdiagram.com/xenos-core/lifestealcore?utm_source=readme&utm_medium=picture)
 **A Lifesteal plugin for Paper and Folia.** When a player kills another player, one heart moves from the loser to the winner — nothing is created, nothing is paid, the total on the server stays the same. Hearts are stored per player and survive death, logout and server restarts.
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
