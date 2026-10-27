@@ -15,11 +15,12 @@ name: LifeStealCore CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
   release:
     types: [ created ]
+  workflow_dispatch:
 
 permissions:
   contents: read
