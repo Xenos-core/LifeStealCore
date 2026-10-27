@@ -1,0 +1,584 @@
+# =====================================================================
+#  LifeStealCore - behaviour and text
+# =====================================================================
+#  Kill a player, take one of their hearts. Nothing is created and
+#  nothing is paid: one health bar shrinks and another grows, and the
+#  count survives death, logout and restart.
+#
+#  READ THE `abuse:` SECTION BEFORE YOU GO LIVE.
+#  A heart per kill is worth far more than a coin per kill, so the
+#  invitation to farm it is stronger: two accounts taking turns dying,
+#  and one of them walks away at twenty hearts having fought nobody. The
+#  rules in that section are what make the feature survive contact with
+#  real players. The defaults are set for a survival server and are
+#  deliberately strict.
+#
+#  Reload everything with  /lifesteal reload
+# =====================================================================
+
+# The language is NOT set here. It sits in config.yml one folder up, next
+# to lang/, and it decides which of the lang/<code>/ folders this file is
+# read from. Switching it there creates the other folder from scratch -
+# your settings do not move across, so choose before you configure.
+
+# Sits in front of every message below. Blank it out for silent,
+# prefix-free lines - the messages themselves stay untouched.
+prefix: '&#FF5C7A&lLIFESTEAL &#9B9B9B» '
+
+# The master switch. Off, no kill moves a heart, and the command still
+# works - so you can suspend lifesteal for an event without unloading the
+# plugin and losing everyone's heart count while it is gone.
+enabled: true
+
+
+# ---------------------------------------------------------------------
+#  Permissions
+# ---------------------------------------------------------------------
+#  Rename these to fit your rank setup. An empty string means "no
+#  permission required" - use that to hand something to everyone without
+#  granting a node to every rank.
+permissions:
+  use: 'lifestealcore.use'        # /lifesteal - see your own hearts
+  steal: 'lifestealcore.steal'    # actually take a heart for a kill
+  admin: 'lifestealcore.admin'    # check, give, set, reload
+  mute: 'lifestealcore.mute'      # never see the server-wide announcements
+  exempt: 'lifestealcore.exempt'  # this player never loses a heart
+
+
+# ---------------------------------------------------------------------
+#  Where hearts move
+# ---------------------------------------------------------------------
+#  mode: blacklist   every world EXCEPT the ones listed
+#  mode: whitelist   only the ones listed
+#
+#  An empty list means every world, whichever mode is set - nobody writes
+#  an empty whitelist on purpose, so it is read as the harmless one.
+#
+#  Worth using: put your spawn world or a duel arena on the blacklist.
+#  An arena is where friendly duels happen, and a friendly duel that
+#  costs a heart is a fight nobody has twice.
+worlds:
+  mode: 'blacklist'
+  list: []
+
+
+# ---------------------------------------------------------------------
+#  The hearts themselves
+# ---------------------------------------------------------------------
+hearts:
+
+  # What a player starts with, and what they come back on after being
+  # eliminated. 10 is the vanilla health bar.
+  default: 10
+
+  # The lowest a player may sit on. A player who would drop BELOW this is
+  # eliminated instead - see the `elimination:` section.
+  #
+  # 1 means the last heart is the last chance. Set it to 0 and a player
+  # can walk around on an empty bar, which is not survivable and not what
+  # you want; set it higher to end the run sooner.
+  minimum: 1
+
+  # The ceiling. 20 is twice the vanilla bar and about as far as the
+  # health display stays readable - above that the hearts wrap into extra
+  # rows and cover the hotbar.
+  maximum: 20
+
+  # How many hearts one kill moves. The victim loses this many and the
+  # killer gains the same, so the total on the server stays the same.
+  per-kill: 1
+
+  # What happens when the killer is already at the ceiling.
+  #
+  # true  the victim loses the heart anyway - it is destroyed rather than
+  #       transferred. Keeps dying expensive no matter who killed you,
+  #       and slowly removes hearts from the server, which is what stops
+  #       everyone from ending up at maximum.
+  # false nothing happens at all: no heart lost, no cooldown used. Kinder
+  #       to the victim, but it makes the strongest player on the server
+  #       completely safe to lose to, and that is a target nobody fears.
+  victim-loses-when-killer-is-full: true
+
+
+# ---------------------------------------------------------------------
+#  Running out of hearts
+# ---------------------------------------------------------------------
+#  What happens to somebody who drops below hearts.minimum.
+#
+#  Whichever mode you pick, their stored count goes back to
+#  hearts.default. It has to: otherwise they would be eliminated again by
+#  the very next death - or by the login itself - forever. The punishment
+#  is the mode, not a permanently crippled health bar.
+#
+#  ban        thrown off and banned, for a while or for good
+#  spectator  left on the server as a ghost until an admin gives hearts
+#             back with /lifesteal set. No ban, so they can still watch
+#             and talk - the softest option that still ends their run.
+#  kick       thrown off once. They can walk straight back in with a full
+#             bar, so this is the "hearts are a scoreboard, not a life"
+#             setting. Nothing is remembered afterwards.
+elimination:
+  mode: 'ban'
+
+  ban:
+    # How long, in minutes. 1440 = one day. 0 = forever.
+    #
+    # A day is the usual choice and it is a real punishment on a survival
+    # server without being the end of the account. Forever turns your
+    # server into a one-life world, which is a different game - a good
+    # one, but decide it on purpose.
+    minutes: 1440
+
+    # Leave EMPTY to use the server's own ban list, which is what the
+    # duration above applies to.
+    #
+    # Fill it in if you run LiteBans, AdvancedBan or a network-wide
+    # punishment system: a ban written into banned-players.json is
+    # invisible to those, so your staff cannot see it and cannot lift it.
+    # Run as the console.
+    #
+    # Placeholders: %player% %minutes% %duration% %reason%
+    # Example:  'tempban %player% %minutes%m %reason%'
+    command: ''
+
+    # The reason recorded with the ban. Colour codes are stripped from
+    # it - a ban list entry is plain text.
+    reason: 'You ran out of hearts.'
+
+  spectator:
+    # Which mode a revived player is put back into. Not fixed to
+    # survival: a server that runs adventure everywhere would otherwise
+    # find this plugin handing out the ability to break blocks.
+    return-gamemode: 'SURVIVAL'
+
+
+# ---------------------------------------------------------------------
+#  The plain cooldown
+# ---------------------------------------------------------------------
+#  How long this killer waits between two steals, no matter who they
+#  killed. This is the throttle on how fast anyone can climb.
+#
+#  On its own it does NOT stop farming. A pair of accounts is perfectly
+#  happy to trade one heart every interval forever; all a plain cooldown
+#  does is set the rate. The rules under `abuse:` are the ones that make
+#  the second account not worth running.
+cooldown:
+  enabled: true
+  minutes: 1.0
+
+
+# ---------------------------------------------------------------------
+#  Anti-farm
+# ---------------------------------------------------------------------
+#  Each of these answers a different half of "is this a fight or a
+#  farm?". Leave them all on unless you know why you are turning one off.
+#
+#  A kill that any of them refuses moves NO heart in either direction.
+#  Taking from the victim anyway would let a farmer delete hearts from
+#  the server without gaining any, which is a different exploit with the
+#  same two accounts.
+abuse:
+
+  # Hours-long cooldown on this exact killer/victim PAIR.
+  # The one rule a farm cannot work around by killing faster: the same
+  # two accounts only ever trade one heart per interval, however many
+  # times they duel. 720 = twice a day. Set 0 to switch off.
+  pair-cooldown-minutes: 720
+
+  # How often the same killer may take from the same victim per day.
+  # Belt to the cooldown's braces: it also holds when an admin shortens
+  # the cooldown and forgets what it was there for. 0 = no limit.
+  pair-limit-per-day: 1
+
+  # How many hearts one player may take in a day, from anybody.
+  # 0 = no limit. A cap here turns "farm all night" into "farm for ten
+  # minutes". Set it well above what an active PvP player reaches in an
+  # evening - on most servers that is three or four.
+  steals-per-day: 0
+
+  # How long a victim must have played before their hearts can be taken.
+  # This is the rule that costs a farm the most. A freshly made alt has
+  # no playtime at all, so it has to be genuinely played for half an hour
+  # before it is worth killing - and that is time nobody spends for one
+  # heart. Counted from the vanilla playtime statistic, so it survives a
+  # reinstall of this plugin. 0 = switch off.
+  minimum-victim-playtime-minutes: 30
+
+  # Refuse when killer and victim are connected from the same address.
+  # Two clients on one connection is the shape of a farm rather than of a
+  # fight. It also catches two siblings on one router, which is exactly
+  # why it can be switched off - and why `refused-address` below is empty
+  # by default: an honest pair should not be told they look suspicious,
+  # and a farmer should not be told which rule caught them.
+  #
+  # A player behind a proxy that hides the address is never matched.
+  block-same-address: true
+
+
+# ---------------------------------------------------------------------
+#  The heart item
+# ---------------------------------------------------------------------
+#  A heart you can hold, hand out with /lifesteal give, trade and lose.
+#  Right-click to use it.
+#
+#  THIS SECTION IS YOURS. Unlike everything else in this file it is never
+#  filled back in on an update, so a key you delete stays deleted - it
+#  describes an object you design, and an update must not put back a glow
+#  you took off on purpose.
+#
+#  WHAT MAKES IT REAL IS NOT ITS NAME. The item is marked in its own data
+#  container, so renaming an apple to match it in an anvil produces an
+#  apple with a fancy name and nothing else. You may change the material,
+#  the name and the lore below at any time without breaking a single
+#  heart already in circulation.
+heart-item:
+
+  # Any Minecraft material. NETHER_STAR and TOTEM_OF_UNDYING are the
+  # usual picks because nothing else looks like them in an inventory.
+  material: 'NETHER_STAR'
+
+  # How many hearts one item is worth. Stamped onto each item as it is
+  # handed out, so raising this later does not silently upgrade the ones
+  # already sitting in somebody's chest.
+  hearts: 1
+
+  # %hearts% is the number above.
+  name: '&#FF5C7A&lHeart'
+  lore:
+    - '&7Right-click to gain &#FF5C7A%hearts% heart&7.'
+    - ''
+    - '&8Won by fighting. Lost by dying.'
+
+  # The enchantment shimmer, without an enchantment name in the tooltip.
+  glow: true
+
+  # For a resource pack that gives the heart its own texture.
+  # -1 means "do not set one", which is what you want without a pack.
+  custom-model-data: -1
+
+
+# ---------------------------------------------------------------------
+#  Who hears about it
+# ---------------------------------------------------------------------
+announce:
+
+  # Tell the whole server about every heart taken.
+  #
+  # Off by default, and that is a decision rather than caution: if you
+  # run a death-message plugin the death already has a line in chat, and a
+  # second one about the same kill is noise.
+  broadcast-steal: false
+
+  # Tell the whole server when somebody is eliminated.
+  #
+  # On by default, and this one is worth the noise: an elimination is
+  # rare, it is the moment the stakes become visible to everyone, and it
+  # is the single best advertisement a lifesteal server has.
+  broadcast-eliminated: true
+
+  # Tell the player who died that a heart was taken from them.
+  tell-victim: true
+
+  # Write every steal and every elimination to the server log.
+  # Useful as an audit trail: this is the line you look for when somebody
+  # reports a farm, and it is what tells you which pair of names to
+  # check.
+  log-to-console: true
+
+
+# ---------------------------------------------------------------------
+#  PlaceholderAPI
+# ---------------------------------------------------------------------
+placeholders:
+
+  #  Available with PlaceholderAPI installed. About one player, and also
+  #  about one who is logged out - every record is in memory, so a
+  #  leaderboard may ask about anybody:
+  #    %lifestealcore_hearts%         hearts they own
+  #    %lifestealcore_health%         the same in half-hearts, as Minecraft
+  #                                 counts them
+  #    %lifestealcore_today%          hearts stolen today
+  #    %lifestealcore_total%          hearts stolen ever
+  #    %lifestealcore_cooldown%       seconds before they may steal again
+  #    %lifestealcore_cooldown_text%  the same written out, EMPTY when 0
+  #    %lifestealcore_eliminated%     true / false
+  #    %lifestealcore_alive%          the other way round, for boards
+  #  And about the server, no player needed:
+  #    %lifestealcore_enabled%        true / false
+  #    %lifestealcore_minimum%        the floor from hearts.minimum
+  #    %lifestealcore_maximum%        the cap from hearts.maximum
+  #    %lifestealcore_start%          what a new player begins with
+  #    %lifestealcore_per_kill%       hearts one kill is worth
+  #    %lifestealcore_limit%          steals per day, 0 = no limit
+  #    %lifestealcore_players%        players with a heart count on file
+  #
+  #  %lifestealcore_hearts% belongs under the name and in the scoreboard:
+  #  the health bar only has room for ten hearts, so a player with
+  #  eighteen cannot read their own count off it any more.
+  #
+  #  A player who has never been seen answers with hearts.default rather
+  #  than a blank - that is what they will start with the moment they
+  #  join, so it is the honest number for a leaderboard.
+  #
+  #  Counts answer 0 rather than nothing, so a board can keep doing
+  #  arithmetic with them.
+  #
+  #  What %lifestealcore_cooldown_text% says while there is no wait at all.
+  #  Empty on purpose: TAB's display condition
+  #  '%lifestealcore_cooldown_text%!=' then shows the row only during the
+  #  wait, where a permanent "0s" would read like a block that is not
+  #  there.
+  no-cooldown: ''
+
+
+# ---------------------------------------------------------------------
+#  Data
+# ---------------------------------------------------------------------
+data:
+
+  # Seconds between automatic writes. Every heart count is ALSO written
+  # the moment it changes, and everything again on shutdown - this
+  # interval is the safety net, not the main path. Minimum 30.
+  save-interval-seconds: 300
+
+  # Forget a player who has not been seen for this many days.
+  #
+  # Only records that carry nothing are dropped: the heart count has to
+  # be exactly hearts.default and the player must not be eliminated.
+  # Somebody who fought their way to eighteen hearts is never forgotten,
+  # however long they stay away - handing that back to ten would be a
+  # silent robbery, and handing two hearts back up to ten a silent gift.
+  # 0 keeps everything forever.
+  forget-after-days: 60
+
+  # Which clock decides when "today" ends, for the daily limits above.
+  # Empty means the machine's own time zone. Set it to something like
+  # 'Europe/Berlin' when your server runs on UTC and your players do not:
+  # otherwise the caps reset in the middle of their evening.
+  timezone: ''
+
+
+# ---------------------------------------------------------------------
+#  Where the heart counts are kept
+# ---------------------------------------------------------------------
+#  yaml     one file, readable, fixable by hand  (default)
+#  sqlite   one database file - better once you have thousands of players
+#  mysql    several servers share the same hearts and cooldowns
+#
+#  Nothing to install for any of them: SQLite and MySQL drivers already
+#  ship with Bukkit, Spigot, Paper and Folia.
+#
+#  MySQL is worth a thought here for two reasons at once: on a network a
+#  player's heart count would otherwise be per server - eighteen hearts
+#  on one and ten on the next - and a farm can simply hop to the server
+#  where the cooldowns are blank.
+#
+#  If the database cannot be reached, the plugin falls back to yaml and
+#  says so in the console rather than starting with every count blank.
+storage:
+  type: yaml
+
+  mysql:
+    host: localhost
+    port: 3306
+    database: minecraft
+    user: root
+    password: ''
+    # All of this plugin's rows live in one table. Change the name only if
+    # it is already taken in your database.
+    table: lifestealcore_data
+
+
+# ---------------------------------------------------------------------
+#  Sounds
+# ---------------------------------------------------------------------
+#  Sound keys are the ones Minecraft itself uses (the /playsound list).
+#  Clear the `name` of an entry to silence it.
+#  volume is loudness, pitch is speed - 1.0 is normal, 2.0 an octave up.
+sounds:
+
+  # Played to the killer when they take a heart.
+  stolen:
+    name: 'entity.player.levelup'
+    volume: 1.0
+    pitch: 1.4
+
+  # Played to the victim when they lose one.
+  lost:
+    name: 'entity.wither.spawn'
+    volume: 0.4
+    pitch: 1.6
+
+  # Played when a heart item is used.
+  heart:
+    name: 'entity.player.levelup'
+    volume: 1.0
+    pitch: 1.8
+
+  # Played with a refusal message. Silent when that message is empty.
+  denied:
+    name: 'entity.villager.no'
+    volume: 0.8
+    pitch: 1.0
+
+
+# ---------------------------------------------------------------------
+#  Messages
+# ---------------------------------------------------------------------
+#  Every line is prefixed with `prefix` above.
+#  An empty string switches a message off completely - that is the
+#  intended way to silence one line without editing anything else, and
+#  for the refusals below it silences the sound with it.
+#  The comment above each line lists the placeholders it may use.
+messages:
+
+  # ---- refusals ----
+  #
+  #  A note on which of these are filled in by default. A player who ran
+  #  into a cooldown should be told, because they did nothing wrong and
+  #  will otherwise report the plugin as broken. A player who ran into
+  #  the playtime rule or the address rule should NOT be told which one
+  #  caught them: the only people who meet those two on purpose are the
+  #  ones you are trying to stop, and naming the rule tells them exactly
+  #  what to change. Fill them in if your server would rather be open
+  #  about it.
+
+  # %seconds% %time% - the plain cooldown
+  refused-cooldown: '&#FF6161Your next kill takes a heart again in &f%time%&#FF6161.'
+
+  # %victim% %seconds% %time% - the same pair too soon
+  refused-pair: '&#FF6161Killing &f%victim% &#FF6161pays a heart again in &f%time%&#FF6161.'
+
+  # %victim% - the same pair, already taken as often as allowed today
+  refused-pair-limit: '&#FF6161You already took a heart from &f%victim% &#FF6161today.'
+
+  # %limit% %time% - the daily cap over all victims
+  refused-daily: '&#FF6161You have taken your &f%limit% &#FF6161hearts for today.'
+
+  # %victim% %minutes% - the victim has not played long enough
+  # Empty on purpose, see the note above.
+  refused-playtime: ''
+
+  # %victim% - killer and victim share a connection
+  # Empty on purpose, see the note above.
+  refused-address: ''
+
+  # %victim% %hearts% %maximum%
+  # The killer is at the ceiling and hearts.victim-loses-when-killer-is-
+  # full is false, so nothing happened at all.
+  refused-full: '&#FF6161You are already at &f%maximum% &#FF6161hearts.'
+
+  # ---- the steal ----
+
+  # %killer% %player% %victim% %world% %hearts% %gained% %lost%
+  # %victim-hearts% %maximum% - sent to the killer.
+  stolen: '&fYou took &#FF5C7A%gained% heart &ffrom &#FF6161%victim%&f. You are on &#FF5C7A%hearts%&f.'
+
+  # Same placeholders. Sent to the killer when they were at the ceiling
+  # and the heart was destroyed instead of transferred.
+  stolen-full: '&#FF6161%victim% &flost a heart, but you are already at &#FF5C7A%maximum%&f.'
+
+  # Same placeholders. Sent to the player who died.
+  lost: '&#FF6161%killer% &ftook a heart from you. You are on &#FF5C7A%victim-hearts%&f.'
+
+  # Same placeholders. The server-wide line for a steal, only when
+  # announce.broadcast-steal is on.
+  broadcast-steal: '&#00B5FF%killer% &ftook a heart from &#00B5FF%victim%&f.'
+
+  # ---- elimination ----
+
+  # Same placeholders. The server-wide line, when
+  # announce.broadcast-eliminated is on.
+  broadcast-eliminated: '&#FF2121%victim% &fhas run out of hearts.'
+
+  # %player% - shown to a spectator when they are eliminated, and again
+  # every time they log in while they still are.
+  eliminated-spectator: '&#FF2121You are out of hearts. Ask staff for a revive.'
+
+  # %player% - shown on login to a spectator who is still eliminated.
+  still-eliminated: '&#FF2121You are still out of hearts.'
+
+  # The disconnect screen for elimination.mode: kick.
+  # A list, one line per screen line. Empty list = no kick screen, which
+  # also means no kick - use mode: spectator if that is what you want.
+  # Placeholders: %victim% %killer% %world%
+  kick-screen:
+    - '&#FF2121&lOUT OF HEARTS'
+    - ''
+    - '&7%killer% took your last heart.'
+    - '&7Come back and start over.'
+
+  # The disconnect screen for elimination.mode: ban.
+  # Placeholders: %victim% %killer% %world%
+  ban-screen:
+    - '&#FF2121&lOUT OF HEARTS'
+    - ''
+    - '&7%killer% took your last heart.'
+    - '&7You are banned until your hearts return.'
+
+  # ---- the heart item ----
+
+  # %player% %hearts% %gained% %maximum%
+  heart-used: '&fYou gained &#FF5C7A%gained% heart&f. You are on &#FF5C7A%hearts%&f.'
+
+  # %player% %hearts% %gained% %maximum%
+  heart-too-many: '&#FF6161That would take you past &f%maximum% &#FF6161hearts.'
+
+  # %player% %amount% %hearts% - sent to whoever received the items
+  heart-received: '&fYou were given &#FF5C7A%amount% heart item(s)&f.'
+
+  # (no placeholders) - the heart-item section could not be built
+  item-unavailable: '&#FF2121The heart item is misconfigured - see the console.'
+
+  # ---- the command ----
+
+  # (no placeholders)
+  players-only: '&#FF2121This command has to be run by a player.'
+
+  # %permission%
+  no-permission: '&#FF2121You are not allowed to do that.'
+
+  # %input%
+  unknown-subcommand: '&#FF2121There is no &f%input% &#FF2121here. Try /lifesteal help.'
+
+  # %input%
+  bad-number: '&#FF2121&f%input% &#FF2121is not a number.'
+
+  # %player% - the name exactly as it was typed
+  unknown-player: '&#FF2121Nobody by that name has played here.'
+
+  # %player% - they have played here, but they are not online now
+  player-offline: '&#FF2121%player% has to be online to receive an item.'
+
+  # (no placeholders)
+  usage-status: '&fUse &#FF5C7A/lifesteal&f to see your hearts.'
+  usage-check: '&fUse &#FF5C7A/lifesteal check (player)&f!'
+  usage-give: '&fUse &#FF5C7A/lifesteal give (player) (amount)&f!'
+  usage-set: '&fUse &#FF5C7A/lifesteal set (player) (hearts)&f!'
+  usage-reload: '&fUse &#FF5C7A/lifesteal reload&f to re-read the settings.'
+
+  # ---- the status screen ----
+  #  All five lines share the same placeholders:
+  #  %player% %hearts% %health% %minimum% %maximum% %per-kill% %today%
+  #  %total% %limit% %remaining% %seconds% %time% %state%
+
+  status-header: '&#FF5C7A%player%'
+  status-hearts: '&fHearts: &#FF5C7A%hearts% &7of %maximum% &f(%health% health)'
+  status-today: '&fToday: &#FF5C7A%today% &ftaken, &#FF5C7A%remaining% &fleft of &#FF5C7A%limit%&f.'
+  status-total: '&fAll time: &#FF5C7A%total% &fhearts taken.'
+  status-cooldown: '&fNext steal in &#FF5C7A%time%&f.'
+  status-ready: '&#71F521Ready - your next kill takes a heart.'
+
+  # ---- admin ----
+
+  # %player% %hearts% %minimum% %maximum%
+  set-done: '&f%player% is now on &#FF5C7A%hearts% &fhearts.'
+
+  # %player% %hearts% %maximum% - sent to the player whose count changed
+  hearts-changed: '&fYour hearts were set to &#FF5C7A%hearts%&f.'
+
+  # %player% %amount% %hearts%
+  give-done: '&fGave &#FF5C7A%amount% heart item(s) &fto &#00B5FF%player%&f.'
+
+  # (no placeholders)
+  reloaded: '&#71F521Settings and messages reloaded.'

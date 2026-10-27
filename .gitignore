@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------
+#  LifeStealCore - .gitignore
+# ---------------------------------------------------------------
+
+# ---- Maven build output ---------------------------------------
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# ---- Locally vendored API jars (fetched by the build anyway) --
+.api/
+
+# ---- IDE - project files, never the code ----------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.classpath
+.project
+.settings/
+bin/
+.factorypath
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+nbactions.xml
+nb-configuration.xml
+*.nbproject
+
+# ---- Logs and crash reports -----------------------------------
+*.log
+logs/
+crash-reports/
+
+# ---- Secrets / local environment ------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- OS noise --------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/

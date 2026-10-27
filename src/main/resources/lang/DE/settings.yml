@@ -1,0 +1,606 @@
+# =====================================================================
+#  LifeStealCore - Verhalten und Texte
+# =====================================================================
+#  Toete einen Spieler und nimm ihm ein Herz ab. Es entsteht nichts und
+#  es wird nichts bezahlt: eine Lebensleiste schrumpft, eine andere
+#  waechst - und der Stand ueberlebt Tod, Abmelden und Neustart.
+#
+#  LIES DEN ABSCHNITT `abuse:`, BEVOR DU LIVE GEHST.
+#  Ein Herz je Kill ist viel mehr wert als eine Muenze je Kill, also ist
+#  die Einladung zum Farmen groesser: zwei Konten, die sich abwechselnd
+#  umbringen, und eines davon steht am Ende bei zwanzig Herzen, ohne
+#  gegen irgendjemanden gekaempft zu haben. Die Regeln in jenem Abschnitt
+#  sind das, was die Funktion den Kontakt mit echten Spielern ueberstehen
+#  laesst. Die Standardwerte sind fuer einen Survival-Server gedacht und
+#  bewusst streng.
+#
+#  Alles neu laden mit  /lifesteal reload
+# =====================================================================
+
+# Die Sprache steht NICHT hier. Sie steht in der config.yml eine Ebene
+# hoeher, neben lang/, und entscheidet, aus welchem lang/<Kuerzel>/
+# diese Datei gelesen wird. Ein Wechsel dort legt den anderen Ordner neu
+# an - deine Werte wandern nicht mit, also entscheide vor dem Einrichten.
+
+# Steht vor jeder Meldung unten. Leer machen fuer Zeilen ohne Vorspann -
+# die Texte selbst bleiben unangetastet.
+prefix: '&#FF5C7A&lLIFESTEAL &#9B9B9B» '
+
+# Der Hauptschalter. Aus verschiebt kein Kill mehr ein Herz, und der
+# Befehl geht trotzdem - so laesst sich Lifesteal fuer ein Event
+# aussetzen, ohne das Plugin zu entladen und dabei alle Herzstaende zu
+# verlieren, solange es weg ist.
+enabled: true
+
+
+# ---------------------------------------------------------------------
+#  Rechte
+# ---------------------------------------------------------------------
+#  Benenne sie um, wie es zu deinen Raengen passt. Eine leere
+#  Zeichenkette heisst "kein Recht noetig" - so gibst du etwas allen,
+#  ohne jedem Rang einen Knoten eintragen zu muessen.
+permissions:
+  use: 'lifestealcore.use'        # /lifesteal - eigene Herzen ansehen
+  steal: 'lifestealcore.steal'    # ueberhaupt ein Herz nehmen duerfen
+  admin: 'lifestealcore.admin'    # check, give, set, reload
+  mute: 'lifestealcore.mute'      # die serverweiten Ansagen nie sehen
+  exempt: 'lifestealcore.exempt'  # dieser Spieler verliert nie ein Herz
+
+
+# ---------------------------------------------------------------------
+#  Wo Herzen wandern
+# ---------------------------------------------------------------------
+#  mode: blacklist   jede Welt AUSSER den aufgezaehlten
+#  mode: whitelist   nur die aufgezaehlten
+#
+#  Eine leere Liste heisst "jede Welt", egal welcher Modus - eine leere
+#  Whitelist schreibt niemand mit Absicht, also wird sie harmlos gelesen.
+#
+#  Lohnt sich: setz deine Spawnwelt oder eine Duellarena auf die
+#  Blacklist. In einer Arena wird freundschaftlich gekaempft, und ein
+#  freundschaftlicher Kampf, der ein Herz kostet, findet genau einmal
+#  statt.
+worlds:
+  mode: 'blacklist'
+  list: []
+
+
+# ---------------------------------------------------------------------
+#  Die Herzen selbst
+# ---------------------------------------------------------------------
+hearts:
+
+  # Womit ein Spieler anfaengt, und worauf er nach dem Ausscheiden
+  # zurueckkommt. 10 ist die normale Lebensleiste.
+  default: 10
+
+  # Der niedrigste Stand, auf dem ein Spieler sitzen darf. Wer DARUNTER
+  # fallen wuerde, scheidet stattdessen aus - siehe `elimination:`.
+  #
+  # 1 heisst: das letzte Herz ist die letzte Chance. Auf 0 laeuft ein
+  # Spieler mit leerer Leiste herum, was nicht ueberlebbar ist und nicht
+  # gemeint sein kann; hoeher beendet den Lauf frueher.
+  minimum: 1
+
+  # Die Obergrenze. 20 ist die doppelte normale Leiste und ungefaehr so
+  # weit, wie die Anzeige lesbar bleibt - darueber bricht sie in weitere
+  # Reihen um und verdeckt die Schnellleiste.
+  maximum: 20
+
+  # Wie viele Herzen ein Kill verschiebt. Das Opfer verliert so viele,
+  # der Toeter bekommt genauso viele - die Summe auf dem Server bleibt
+  # gleich.
+  per-kill: 1
+
+  # Was passiert, wenn der Toeter schon an der Obergrenze steht.
+  #
+  # true  Das Opfer verliert das Herz trotzdem - es wird vernichtet
+  #       statt uebertragen. Sterben bleibt teuer, egal wer einen
+  #       umbringt, und dem Server gehen langsam Herzen verloren, was
+  #       genau das ist, was verhindert, dass am Ende alle am Maximum
+  #       stehen.
+  # false Es passiert gar nichts: kein Herz weg, keine Abklingzeit
+  #       verbraucht. Freundlicher zum Opfer, aber damit ist der
+  #       staerkste Spieler des Servers voellig gefahrlos - und vor so
+  #       einem Gegner hat niemand Respekt.
+  victim-loses-when-killer-is-full: true
+
+
+# ---------------------------------------------------------------------
+#  Wenn die Herzen ausgehen
+# ---------------------------------------------------------------------
+#  Was mit jemandem geschieht, der unter hearts.minimum faellt.
+#
+#  In jedem Modus geht sein gespeicherter Stand auf hearts.default
+#  zurueck. Das muss so sein: sonst wuerde er beim naechsten Tod - oder
+#  schon beim Einloggen - sofort wieder ausscheiden, und das fuer immer.
+#  Die Strafe ist der Modus, nicht eine dauerhaft verkrueppelte Leiste.
+#
+#  ban        rausgeworfen und gebannt, auf Zeit oder fuer immer
+#  spectator  bleibt als Geist auf dem Server, bis ein Admin ihm mit
+#             /lifesteal set Herzen zurueckgibt. Kein Bann, er kann
+#             weiter zusehen und reden - die sanfteste Fassung, die den
+#             Lauf trotzdem beendet.
+#  kick       einmal rausgeworfen. Er kann sofort mit voller Leiste
+#             wieder herein, also ist das die Einstellung "Herzen sind
+#             eine Punktzahl, kein Leben". Danach wird nichts gemerkt.
+elimination:
+  mode: 'ban'
+
+  ban:
+    # Wie lange, in Minuten. 1440 = ein Tag. 0 = fuer immer.
+    #
+    # Ein Tag ist die uebliche Wahl und auf einem Survival-Server eine
+    # echte Strafe, ohne das Konto zu beenden. "Fuer immer" macht aus
+    # deinem Server eine Ein-Leben-Welt - ein anderes Spiel, ein gutes,
+    # aber entscheide es mit Absicht.
+    minutes: 1440
+
+    # LEER lassen fuer die eingebaute Bannliste des Servers, auf die sich
+    # die Dauer oben bezieht.
+    #
+    # Ausfuellen, wenn du LiteBans, AdvancedBan oder ein netzwerkweites
+    # Strafsystem betreibst: ein Bann in der banned-players.json ist fuer
+    # die unsichtbar, dein Team sieht ihn nicht und kann ihn nicht
+    # aufheben. Wird als Konsole ausgefuehrt.
+    #
+    # Platzhalter: %player% %minutes% %duration% %reason%
+    # Beispiel:  'tempban %player% %minutes%m %reason%'
+    command: ''
+
+    # Der Grund, der zum Bann gespeichert wird. Farbcodes werden daraus
+    # entfernt - ein Eintrag in der Bannliste ist reiner Text.
+    reason: 'Dir sind die Herzen ausgegangen.'
+
+  spectator:
+    # In welchen Modus ein wiederbelebter Spieler zurueckgesetzt wird.
+    # Nicht fest auf Survival: auf einem Server, der ueberall Adventure
+    # faehrt, wuerde dieses Plugin sonst das Recht verteilen, Bloecke
+    # abzubauen.
+    return-gamemode: 'SURVIVAL'
+
+
+# ---------------------------------------------------------------------
+#  Die einfache Abklingzeit
+# ---------------------------------------------------------------------
+#  Wie lange dieser Toeter zwischen zwei Herzen wartet, egal wen er
+#  umgebracht hat. Das ist die Bremse dafuer, wie schnell jemand
+#  aufsteigen kann.
+#
+#  Fuer sich allein verhindert sie KEIN Farmen. Ein Kontenpaar ist gern
+#  bereit, alle paar Minuten ein Herz hin und her zu schieben; eine
+#  reine Abklingzeit legt nur das Tempo fest. Die Regeln unter `abuse:`
+#  sind die, die das zweite Konto wertlos machen.
+cooldown:
+  enabled: true
+  minutes: 1.0
+
+
+# ---------------------------------------------------------------------
+#  Gegen das Farmen
+# ---------------------------------------------------------------------
+#  Jede dieser Regeln beantwortet eine andere Haelfte der Frage "Kampf
+#  oder Farm?". Lass sie alle an, ausser du weisst, warum du eine
+#  abschaltest.
+#
+#  Ein Kill, den eine davon ablehnt, verschiebt GAR KEIN Herz - in
+#  keine Richtung. Dem Opfer trotzdem eines wegzunehmen wuerde einem
+#  Farmer erlauben, dem Server Herzen zu loeschen, ohne selbst welche zu
+#  bekommen: derselbe Trick mit denselben zwei Konten, nur andersherum.
+abuse:
+
+  # Stundenlange Abklingzeit auf genau dieses Paar Toeter/Opfer.
+  # Die eine Regel, um die eine Farm nicht herumkommt, indem sie
+  # schneller toetet: dieselben zwei Konten tauschen nur ein Herz je
+  # Intervall, egal wie oft sie sich duellieren. 720 = zweimal am Tag.
+  # 0 schaltet sie ab.
+  pair-cooldown-minutes: 720
+
+  # Wie oft derselbe Toeter demselben Opfer am Tag ein Herz nehmen darf.
+  # Der Guertel zu den Hosentraegern der Abklingzeit: sie greift auch
+  # dann noch, wenn ein Admin die Abklingzeit verkuerzt und vergessen
+  # hat, wofuer sie da war. 0 = keine Grenze.
+  pair-limit-per-day: 1
+
+  # Wie viele Herzen ein Spieler am Tag insgesamt nehmen darf.
+  # 0 = keine Grenze. Eine Deckelung macht aus "die ganze Nacht farmen"
+  # ein "zehn Minuten farmen". Setz sie deutlich ueber das, was ein
+  # aktiver PvP-Spieler an einem Abend schafft - auf den meisten Servern
+  # sind das drei oder vier.
+  steals-per-day: 0
+
+  # Wie lange ein Opfer gespielt haben muss, bevor seine Herzen zaehlen.
+  # Das ist die Regel, die eine Farm am meisten kostet. Ein frisch
+  # angelegter Zweitaccount hat gar keine Spielzeit, muss also erst eine
+  # halbe Stunde wirklich gespielt werden, bevor es sich lohnt, ihn
+  # umzubringen - und diese Zeit gibt niemand fuer ein Herz aus. Gezaehlt
+  # wird die Spielzeit-Statistik von Minecraft selbst, die uebersteht
+  # also auch eine Neuinstallation dieses Plugins. 0 schaltet sie ab.
+  minimum-victim-playtime-minutes: 30
+
+  # Ablehnen, wenn Toeter und Opfer von derselben Adresse verbunden sind.
+  # Zwei Clients an einer Leitung sieht aus wie eine Farm und nicht wie
+  # ein Kampf. Es trifft auch zwei Geschwister an einem Router - genau
+  # deshalb laesst es sich abschalten, und genau deshalb ist
+  # `refused-address` unten leer: ein ehrliches Paar soll nicht hoeren,
+  # dass es verdaechtig aussieht, und ein Farmer nicht, welche Regel ihn
+  # erwischt hat.
+  #
+  # Wer hinter einem Proxy sitzt, der die Adresse verbirgt, wird nie
+  # gematcht.
+  block-same-address: true
+
+
+# ---------------------------------------------------------------------
+#  Der Herz-Gegenstand
+# ---------------------------------------------------------------------
+#  Ein Herz zum Anfassen: mit /lifesteal give ausgeben, handeln,
+#  verlieren. Rechtsklick loest es ein.
+#
+#  DIESER ABSCHNITT GEHOERT DIR. Anders als alles andere in dieser Datei
+#  wird er bei einem Update nie ergaenzt, ein geloeschter Schluessel
+#  bleibt also geloescht - er beschreibt einen Gegenstand, den du
+#  gestaltest, und ein Update darf kein Leuchten zurueckbringen, das du
+#  mit Absicht abgenommen hast.
+#
+#  ECHT MACHT IHN NICHT SEIN NAME. Der Gegenstand ist in seiner eigenen
+#  Datenablage markiert, ein im Amboss passend umbenannter Apfel ist also
+#  ein Apfel mit einem schoenen Namen und sonst nichts. Material, Name
+#  und Beschreibung unten kannst du jederzeit aendern, ohne ein einziges
+#  Herz kaputtzumachen, das schon im Umlauf ist.
+heart-item:
+
+  # Jedes Minecraft-Material. NETHER_STAR und TOTEM_OF_UNDYING sind die
+  # ueblichen, weil im Inventar nichts sonst so aussieht.
+  material: 'NETHER_STAR'
+
+  # Wie viele Herzen ein Stueck wert ist. Wird beim Ausgeben in das
+  # Stueck eingebrannt, ein spaeteres Erhoehen wertet also die Herzen in
+  # den Truhen deiner Spieler nicht heimlich auf.
+  hearts: 1
+
+  # %hearts% ist die Zahl von oben.
+  name: '&#FF5C7A&lHerz'
+  lore:
+    - '&7Rechtsklick fuer &#FF5C7A%hearts% Herz&7.'
+    - ''
+    - '&8Erkaempft. Verloren beim Sterben.'
+
+  # Das Verzauberungsschimmern, ohne eine Verzauberung im Tooltip.
+  glow: true
+
+  # Fuer ein Resource Pack, das dem Herz eine eigene Textur gibt.
+  # -1 heisst "keine setzen", und das willst du ohne Pack.
+  custom-model-data: -1
+
+
+# ---------------------------------------------------------------------
+#  Wer davon erfaehrt
+# ---------------------------------------------------------------------
+announce:
+
+  # Den ganzen Server ueber jedes genommene Herz unterrichten.
+  #
+  # Aus als Vorgabe, und das ist eine Entscheidung und keine Vorsicht:
+  # wenn du ein Todesnachrichten-Plugin betreibst, steht zu diesem Tod schon
+  # eine Zeile im Chat, und eine zweite zu demselben Kill ist Laerm.
+  broadcast-steal: false
+
+  # Den ganzen Server unterrichten, wenn jemand ausscheidet.
+  #
+  # An als Vorgabe, und dieser Laerm lohnt sich: ein Ausscheiden ist
+  # selten, es ist der Moment, in dem der Einsatz fuer alle sichtbar
+  # wird, und es ist die beste Werbung, die ein Lifesteal-Server hat.
+  broadcast-eliminated: true
+
+  # Dem Gestorbenen sagen, dass ihm ein Herz genommen wurde.
+  tell-victim: true
+
+  # Jedes genommene Herz und jedes Ausscheiden ins Serverlog schreiben.
+  # Als Nachweis nuetzlich: nach dieser Zeile suchst du, wenn jemand eine
+  # Farm meldet, und sie sagt dir, welches Namenspaar du pruefen musst.
+  log-to-console: true
+
+
+# ---------------------------------------------------------------------
+#  PlaceholderAPI
+# ---------------------------------------------------------------------
+placeholders:
+
+  #  Verfuegbar, sobald PlaceholderAPI installiert ist. Zu einem Spieler,
+  #  auch zu einem abgemeldeten - jeder Datensatz liegt im Speicher, eine
+  #  Bestenliste darf also ueber jeden fragen:
+  #    %lifestealcore_hearts%         Herzen, die er hat
+  #    %lifestealcore_health%         dasselbe in halben Herzen, so wie
+  #                                 Minecraft selbst rechnet
+  #    %lifestealcore_today%          heute gestohlene Herzen
+  #    %lifestealcore_total%          insgesamt gestohlene Herzen
+  #    %lifestealcore_cooldown%       Sekunden bis zum naechsten Steal
+  #    %lifestealcore_cooldown_text%  dasselbe ausgeschrieben, LEER bei 0
+  #    %lifestealcore_eliminated%     true / false
+  #    %lifestealcore_alive%          umgekehrt, fuer Anzeigetafeln
+  #  Und zum Server, ohne Spieler:
+  #    %lifestealcore_enabled%        true / false
+  #    %lifestealcore_minimum%        die Untergrenze aus hearts.minimum
+  #    %lifestealcore_maximum%        die Obergrenze aus hearts.maximum
+  #    %lifestealcore_start%          womit ein neuer Spieler anfaengt
+  #    %lifestealcore_per_kill%       Herzen, die ein Kill bringt
+  #    %lifestealcore_limit%          Steals je Tag, 0 = kein Limit
+  #    %lifestealcore_players%        Spieler mit einem Herzstand auf Platte
+  #
+  #  %lifestealcore_hearts% gehoert unter den Namen und ins Scoreboard: die
+  #  Lebensleiste hat nur Platz fuer zehn Herzen - wer achtzehn hat, kann
+  #  seinen eigenen Stand dort nicht mehr ablesen.
+  #
+  #  Ein Spieler, den der Server noch nie gesehen hat, antwortet mit
+  #  hearts.default statt mit einer Luecke - das ist die Zahl, mit der er
+  #  beim ersten Beitritt anfaengt, und damit die ehrliche fuer eine
+  #  Bestenliste.
+  #
+  #  Zahlen antworten 0 statt nichts, damit eine Anzeigetafel damit
+  #  weiterrechnen kann.
+  #
+  #  Was %lifestealcore_cooldown_text% sagt, wenn gar keine Wartezeit
+  #  laeuft. Mit Absicht leer: die Anzeigebedingung
+  #  '%lifestealcore_cooldown_text%!=' in TAB zeigt die Zeile dann nur
+  #  waehrend der Wartezeit - ein dauerhaftes "0s" liest sich wie eine
+  #  Sperre, die es nicht gibt.
+  no-cooldown: ''
+
+
+# ---------------------------------------------------------------------
+#  Daten
+# ---------------------------------------------------------------------
+data:
+
+  # Sekunden zwischen den automatischen Schreibvorgaengen. Jeder
+  # Herzstand wird AUSSERDEM in dem Moment geschrieben, in dem er sich
+  # aendert, und beim Herunterfahren noch einmal alles - dieses Intervall
+  # ist das Sicherheitsnetz, nicht der Hauptweg. Mindestens 30.
+  save-interval-seconds: 300
+
+  # Einen Spieler vergessen, der so viele Tage nicht gesehen wurde.
+  #
+  # Vergessen werden nur Datensaetze, die nichts tragen: der Herzstand
+  # muss genau hearts.default sein und der Spieler darf nicht
+  # ausgeschieden sein. Wer sich auf achtzehn Herzen hochgekaempft hat,
+  # wird nie vergessen, egal wie lange er wegbleibt - ihn auf zehn
+  # zurueckzusetzen waere ein stiller Diebstahl, und zwei Herzen auf
+  # zehn anzuheben ein stilles Geschenk. 0 behaelt alles fuer immer.
+  forget-after-days: 60
+
+  # Welche Uhr entscheidet, wann "heute" endet - fuer die Tagesgrenzen
+  # oben. Leer heisst die Zeitzone des Rechners. Setz sie auf etwas wie
+  # 'Europe/Berlin', wenn dein Server auf UTC laeuft und deine Spieler
+  # nicht: sonst setzen sich die Grenzen mitten am Abend zurueck.
+  timezone: ''
+
+
+# ---------------------------------------------------------------------
+#  Wo die Herzstaende liegen
+# ---------------------------------------------------------------------
+#  yaml     eine Datei, lesbar, von Hand reparierbar  (Vorgabe)
+#  sqlite   eine Datenbankdatei - besser ab ein paar tausend Spielern
+#  mysql    mehrere Server teilen sich Herzen und Abklingzeiten
+#
+#  Fuer keines davon ist etwas zu installieren: die Treiber fuer SQLite
+#  und MySQL liegen Bukkit, Spigot, Paper und Folia schon bei.
+#
+#  Ueber MySQL nachzudenken lohnt hier aus zwei Gruenden gleichzeitig: in
+#  einem Netzwerk waere der Herzstand sonst je Server einer - achtzehn
+#  hier, zehn nebenan - und eine Farm zieht einfach auf den Server um,
+#  auf dem die Abklingzeiten leer sind.
+#
+#  Ist die Datenbank nicht erreichbar, faellt das Plugin auf yaml zurueck
+#  und sagt es in der Konsole, statt mit lauter leeren Staenden zu
+#  starten.
+storage:
+  type: yaml
+
+  mysql:
+    host: localhost
+    port: 3306
+    database: minecraft
+    user: root
+    password: ''
+    # Alle Zeilen dieses Plugins liegen in einer Tabelle. Aendere den
+    # Namen nur, wenn er in deiner Datenbank schon vergeben ist.
+    table: lifestealcore_data
+
+
+# ---------------------------------------------------------------------
+#  Toene
+# ---------------------------------------------------------------------
+#  Die Tonschluessel sind die von Minecraft selbst (die Liste von
+#  /playsound). Ein leeres `name` schaltet einen Ton ab.
+#  volume ist die Lautstaerke, pitch die Tonhoehe - 1.0 ist normal,
+#  2.0 eine Oktave hoeher.
+sounds:
+
+  # Fuer den Toeter, wenn er ein Herz nimmt.
+  stolen:
+    name: 'entity.player.levelup'
+    volume: 1.0
+    pitch: 1.4
+
+  # Fuer das Opfer, wenn es eines verliert.
+  lost:
+    name: 'entity.wither.spawn'
+    volume: 0.4
+    pitch: 1.6
+
+  # Wenn ein Herz-Gegenstand eingeloest wird.
+  heart:
+    name: 'entity.player.levelup'
+    volume: 1.0
+    pitch: 1.8
+
+  # Zu einer Ablehnung. Still, wenn diese Meldung leer ist.
+  denied:
+    name: 'entity.villager.no'
+    volume: 0.8
+    pitch: 1.0
+
+
+# ---------------------------------------------------------------------
+#  Meldungen
+# ---------------------------------------------------------------------
+#  Vor jeder Zeile steht `prefix` von oben.
+#  Eine leere Zeichenkette schaltet eine Meldung ganz ab - das ist der
+#  vorgesehene Weg, eine einzelne Zeile stillzulegen, ohne sonst etwas
+#  zu aendern, und bei den Ablehnungen unten schaltet sie den Ton mit
+#  ab. Der Kommentar ueber jeder Zeile nennt ihre Platzhalter.
+messages:
+
+  # ---- Ablehnungen ----
+  #
+  #  Eine Anmerkung dazu, welche davon vorausgefuellt sind. Wer in eine
+  #  Abklingzeit laeuft, soll es erfahren: er hat nichts falsch gemacht
+  #  und meldet das Plugin sonst als kaputt. Wer in die Spielzeit- oder
+  #  die Adressregel laeuft, soll NICHT erfahren, welche ihn erwischt
+  #  hat: die beiden trifft mit Absicht nur, wen du aufhalten willst, und
+  #  die Regel zu benennen sagt ihm genau, was er aendern muss. Fuell sie
+  #  aus, wenn dein Server lieber offen damit umgeht.
+
+  # %seconds% %time% - die einfache Abklingzeit
+  refused-cooldown: '&#FF6161Dein naechster Kill bringt in &f%time% &#FF6161wieder ein Herz.'
+
+  # %victim% %seconds% %time% - dasselbe Paar zu frueh
+  refused-pair: '&#FF6161%victim% &#FF6161bringt in &f%time% &#FF6161wieder ein Herz.'
+
+  # %victim% - dasselbe Paar, heute schon so oft wie erlaubt
+  refused-pair-limit: '&#FF6161Von &f%victim% &#FF6161hast du heute schon ein Herz genommen.'
+
+  # %limit% %time% - die Tagesgrenze ueber alle Opfer
+  refused-daily: '&#FF6161Du hast deine &f%limit% &#FF6161Herzen fuer heute.'
+
+  # %victim% %minutes% - das Opfer hat noch nicht lange genug gespielt
+  # Mit Absicht leer, siehe die Anmerkung oben.
+  refused-playtime: ''
+
+  # %victim% - Toeter und Opfer teilen sich eine Verbindung
+  # Mit Absicht leer, siehe die Anmerkung oben.
+  refused-address: ''
+
+  # %victim% %hearts% %maximum%
+  # Der Toeter steht an der Obergrenze und
+  # hearts.victim-loses-when-killer-is-full ist false, es ist also gar
+  # nichts passiert.
+  refused-full: '&#FF6161Du stehst schon bei &f%maximum% &#FF6161Herzen.'
+
+  # ---- das genommene Herz ----
+
+  # %killer% %player% %victim% %world% %hearts% %gained% %lost%
+  # %victim-hearts% %maximum% - geht an den Toeter.
+  stolen: '&fDu hast &#FF5C7A%gained% Herz &fvon &#FF6161%victim% &fgenommen. Du stehst bei &#FF5C7A%hearts%&f.'
+
+  # Dieselben Platzhalter. Geht an den Toeter, wenn er an der Obergrenze
+  # stand und das Herz vernichtet statt uebertragen wurde.
+  stolen-full: '&#FF6161%victim% &fhat ein Herz verloren, aber du stehst schon bei &#FF5C7A%maximum%&f.'
+
+  # Dieselben Platzhalter. Geht an den Gestorbenen.
+  lost: '&#FF6161%killer% &fhat dir ein Herz genommen. Du stehst bei &#FF5C7A%victim-hearts%&f.'
+
+  # Dieselben Platzhalter. Die serverweite Zeile zu einem genommenen
+  # Herz, nur wenn announce.broadcast-steal an ist.
+  broadcast-steal: '&#00B5FF%killer% &fhat &#00B5FF%victim% &fein Herz genommen.'
+
+  # ---- Ausscheiden ----
+
+  # Dieselben Platzhalter. Die serverweite Zeile, wenn
+  # announce.broadcast-eliminated an ist.
+  broadcast-eliminated: '&#FF2121%victim% &fsind die Herzen ausgegangen.'
+
+  # %player% - fuer einen Zuschauer beim Ausscheiden, und danach bei
+  # jedem Einloggen, solange er es noch ist.
+  eliminated-spectator: '&#FF2121Dir sind die Herzen ausgegangen. Frag das Team nach einer Wiederbelebung.'
+
+  # %player% - beim Einloggen fuer einen Zuschauer, der es noch ist.
+  still-eliminated: '&#FF2121Dir fehlen immer noch die Herzen.'
+
+  # Der Trennungsbildschirm fuer elimination.mode: kick.
+  # Eine Liste, eine Zeile je Bildschirmzeile. Leere Liste = kein
+  # Bildschirm, und damit auch kein Rauswurf - nimm dann mode: spectator,
+  # wenn du das willst.
+  # Platzhalter: %victim% %killer% %world%
+  kick-screen:
+    - '&#FF2121&lKEINE HERZEN MEHR'
+    - ''
+    - '&7%killer% hat dir dein letztes Herz genommen.'
+    - '&7Komm wieder und fang neu an.'
+
+  # Der Trennungsbildschirm fuer elimination.mode: ban.
+  # Platzhalter: %victim% %killer% %world%
+  ban-screen:
+    - '&#FF2121&lKEINE HERZEN MEHR'
+    - ''
+    - '&7%killer% hat dir dein letztes Herz genommen.'
+    - '&7Du bist gebannt, bis deine Herzen zurueck sind.'
+
+  # ---- der Herz-Gegenstand ----
+
+  # %player% %hearts% %gained% %maximum%
+  heart-used: '&fDu hast &#FF5C7A%gained% Herz &fbekommen. Du stehst bei &#FF5C7A%hearts%&f.'
+
+  # %player% %hearts% %gained% %maximum%
+  heart-too-many: '&#FF6161Damit kaemst du ueber &f%maximum% &#FF6161Herzen.'
+
+  # %player% %amount% %hearts% - geht an den Empfaenger
+  heart-received: '&fDu hast &#FF5C7A%amount% Herz-Gegenstand/-Gegenstaende &fbekommen.'
+
+  # (keine Platzhalter) - der Abschnitt heart-item war nicht baubar
+  item-unavailable: '&#FF2121Der Herz-Gegenstand ist falsch eingerichtet - sieh in die Konsole.'
+
+  # ---- der Befehl ----
+
+  # (keine Platzhalter)
+  players-only: '&#FF2121Diesen Befehl muss ein Spieler ausfuehren.'
+
+  # %permission%
+  no-permission: '&#FF2121Das darfst du nicht.'
+
+  # %input%
+  unknown-subcommand: '&#FF2121Hier gibt es kein &f%input%&#FF2121. Versuch /lifesteal help.'
+
+  # %input%
+  bad-number: '&#FF2121&f%input% &#FF2121ist keine Zahl.'
+
+  # %player% - der Name genau so, wie er getippt wurde
+  unknown-player: '&#FF2121Unter dem Namen hat hier niemand gespielt.'
+
+  # %player% - er hat hier gespielt, ist aber gerade nicht online
+  player-offline: '&#FF2121%player% muss online sein, um etwas zu bekommen.'
+
+  # (keine Platzhalter)
+  usage-status: '&fMit &#FF5C7A/lifesteal&f siehst du deine Herzen.'
+  usage-check: '&fBenutze &#FF5C7A/lifesteal check (Spieler)&f!'
+  usage-give: '&fBenutze &#FF5C7A/lifesteal give (Spieler) (Anzahl)&f!'
+  usage-set: '&fBenutze &#FF5C7A/lifesteal set (Spieler) (Herzen)&f!'
+  usage-reload: '&fMit &#FF5C7A/lifesteal reload&f werden die Einstellungen neu gelesen.'
+
+  # ---- die Standanzeige ----
+  #  Alle fuenf Zeilen teilen sich dieselben Platzhalter:
+  #  %player% %hearts% %health% %minimum% %maximum% %per-kill% %today%
+  #  %total% %limit% %remaining% %seconds% %time% %state%
+
+  status-header: '&#FF5C7A%player%'
+  status-hearts: '&fHerzen: &#FF5C7A%hearts% &7von %maximum% &f(%health% Leben)'
+  status-today: '&fHeute: &#FF5C7A%today% &fgenommen, &#FF5C7A%remaining% &fvon &#FF5C7A%limit% &fuebrig.'
+  status-total: '&fInsgesamt: &#FF5C7A%total% &fHerzen genommen.'
+  status-cooldown: '&fNaechstes Herz in &#FF5C7A%time%&f.'
+  status-ready: '&#71F521Bereit - dein naechster Kill bringt ein Herz.'
+
+  # ---- Verwaltung ----
+
+  # %player% %hearts% %minimum% %maximum%
+  set-done: '&f%player% steht jetzt bei &#FF5C7A%hearts% &fHerzen.'
+
+  # %player% %hearts% %maximum% - geht an den Spieler, dessen Stand sich
+  # geaendert hat
+  hearts-changed: '&fDeine Herzen wurden auf &#FF5C7A%hearts% &fgesetzt.'
+
+  # %player% %amount% %hearts%
+  give-done: '&#FF5C7A%amount% Herz-Gegenstand/-Gegenstaende &fan &#00B5FF%player% &fgegeben.'
+
+  # (keine Platzhalter)
+  reloaded: '&#71F521Einstellungen und Texte neu geladen.'

@@ -1,0 +1,31 @@
+name: LifeStealCore
+version: '${project.version}'
+main: net.riftfox.lifestealcore.LifestealPlugin
+api-version: '26.1'
+authors: [RiftFox]
+description: LifeStealCore - hearts move between players on kill, with anti-farm protection and Paper/Folia support.
+folia-supported: true
+softdepend: [PlaceholderAPI, Vault]
+
+commands:
+  lifesteal:
+    description: Your hearts, somebody else's, or the admin commands
+    usage: /lifesteal [status | check <player> | give <player> <amount> | set <player> <hearts> | reload]
+    aliases: [hearts, lifestealcore]
+
+permissions:
+  lifestealcore.use:
+    description: Look up your own hearts
+    default: true
+  lifestealcore.steal:
+    description: Actually take a heart for a kill. Revoke it from staff who test PvP.
+    default: true
+  lifestealcore.admin:
+    description: /lifesteal check, give, set and reload
+    default: op
+  lifestealcore.mute:
+    description: Hides the server-wide steal announcement
+    default: false
+  lifestealcore.exempt:
+    description: This player never loses a heart and never yields one
+    default: false
