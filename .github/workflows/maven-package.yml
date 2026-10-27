@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------------
+#  LifeStealCore - CI: build the plugin jar and attach it to GitHub Releases
+# ---------------------------------------------------------------------------
+#  - Maven build on push and pull requests (JDK 25)
+#  - On release: build + attach plugins/LifeStealCore-<version>.jar to the Release
+#
+#  Notes:
+#    * Uses JDK 25, matching the <release>25</release> set in pom.xml.
+#    * The jar lands in target/LifeStealCore-<version>.jar after 'mvn package'.
+#    * On pull requests the built jar is uploaded as a workflow artifact for
+#      you to download and test locally.
+# ---------------------------------------------------------------------------
+
+name: LifeStealCore CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B -ntp clean package --file pom.xml
+
+      - name: Upload build artifact
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LifeStealCore
+          path: target/LifeStealCore-*.jar
+
+      - name: Attach jar to GitHub Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_path: target/LifeStealCore-*.jar
+          asset_name: LifeStealCore-${{ github.event.release.tag_name }}.jar
+          asset_content_type: application/java-archive
